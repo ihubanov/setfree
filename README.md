@@ -42,6 +42,7 @@ SetFree also keeps itself current on its own. Once a day it checks whether main 
 setfree claude
 setfree codex .
 setfree code .
+setfree hermes
 ```
 
 Everything after the CLI name goes straight through, untouched:
@@ -72,7 +73,9 @@ Setup only happens on a real terminal. In scripts or CI, set `SETFREE_BASE_URL` 
 
 ## Coding CLIs
 
-Claude Code and Codex work today. So does VS Code: `setfree code` (or `setfree vscode`) launches the editor with the gateway environment in place, so the Claude Code extension inside it routes through your gateway — the extension spawns the same `claude` binary, which reads its configuration from the environment VS Code hands it. One catch, which SetFree tells you about at launch: that environment only applies to a freshly started VS Code, so quit any running instance first.
+Claude Code, Codex, and Hermes Agent work today. So does VS Code: `setfree code` (or `setfree vscode`) launches the editor with the gateway environment in place, so the Claude Code extension inside it routes through your gateway — the extension spawns the same `claude` binary, which reads its configuration from the environment VS Code hands it. One catch, which SetFree tells you about at launch: that environment only applies to a freshly started VS Code, so quit any running instance first.
+
+`setfree hermes` passes `--provider custom` and sets `CUSTOM_BASE_URL` plus a credential env var derived from the gateway's own hostname (e.g. `api.mindshub.ai` → `MINDSHUB_API_KEY`) — the one path in Hermes proven to route through an arbitrary gateway, since Hermes has no CLI flag that accepts a literal base URL or key at all. `setfree hermes-desktop` sets the same environment for Hermes' desktop app, whose backend inherits it the same way VS Code's Claude Code extension does — with one caveat: if the desktop app already has a provider chosen in its own Settings, that saved choice wins over the environment, so reset it there first (or just use `setfree hermes`, which always wins).
 
 Gemini CLI and Aider get detected if they're installed and show up on the landing screen, but they politely decline to launch until someone builds an adapter for them. No pretending.
 

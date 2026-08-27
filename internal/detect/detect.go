@@ -30,6 +30,8 @@ var List = []Known{
 	{Key: "claude", DisplayName: "Claude Code", BinaryNames: []string{"claude"}, Supported: true},
 	{Key: "codex", DisplayName: "Codex", BinaryNames: []string{"codex"}, Supported: true},
 	{Key: "code", DisplayName: "VS Code", BinaryNames: VSCodeBinaries(), Supported: true},
+	{Key: "hermes", DisplayName: "Hermes Agent", BinaryNames: []string{"hermes"}, Supported: true},
+	{Key: "hermes-desktop", DisplayName: "Hermes (Desktop)", BinaryNames: HermesDesktopBinaries(), Supported: true},
 	{Key: "gemini", DisplayName: "Gemini CLI", BinaryNames: []string{"gemini"}, Supported: false},
 	{Key: "aider", DisplayName: "Aider", BinaryNames: []string{"aider"}, Supported: false},
 }
@@ -59,6 +61,31 @@ func VSCodeBinaries() []string {
 			filepath.Join(dir, "Visual Studio Code.app/Contents/Resources/app/bin/code"),
 			filepath.Join(dir, "Visual Studio Code - Insiders.app/Contents/Resources/app/bin/code-insiders"),
 		)
+	}
+	return names
+}
+
+// HermesDesktopBinaries lists everywhere the Hermes Agent desktop app's own
+// executable lives, mirroring VSCodeBinaries' approach: PATH first (a
+// best-effort guess, since no packaged build was available to confirm a
+// Linux/Windows install path or binary name), then — on macOS — the actual
+// binary inside the app bundle, launched directly rather than via `open -a`
+// so the child genuinely inherits this process's environment the way
+// exec.Command guarantees, instead of relying on how `open`/LaunchServices
+// happens to handle it. The bundle's executable name ("Hermes") is
+// electron-builder's configured `executableName` / `mac.extendInfo.
+// CFBundleExecutable` in apps/desktop/package.json — not a guess.
+func HermesDesktopBinaries() []string {
+	names := []string{"hermes-desktop", "Hermes"}
+	if runtime.GOOS != "darwin" {
+		return names
+	}
+	appDirs := []string{"/Applications"}
+	if home, err := os.UserHomeDir(); err == nil {
+		appDirs = append(appDirs, filepath.Join(home, "Applications"))
+	}
+	for _, dir := range appDirs {
+		names = append(names, filepath.Join(dir, "Hermes.app/Contents/MacOS/Hermes"))
 	}
 	return names
 }

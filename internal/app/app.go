@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/mindsdb/setfree/internal/adapters/claude"
 	_ "github.com/mindsdb/setfree/internal/adapters/codex"
+	_ "github.com/mindsdb/setfree/internal/adapters/hermes"
 	_ "github.com/mindsdb/setfree/internal/adapters/vscode"
 	"github.com/mindsdb/setfree/internal/config"
 	"github.com/mindsdb/setfree/internal/gateway"
