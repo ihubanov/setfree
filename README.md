@@ -41,7 +41,7 @@ SetFree also keeps itself current on its own. Once a day it checks whether main 
 ```sh
 setfree claude
 setfree codex .
-setfree code .
+setfree vscode .
 setfree hermes
 ```
 
