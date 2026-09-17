@@ -3,21 +3,21 @@
 
 # SetFree
 
-**Use the coding agent you love with any LLM.**
+**Use the coding agent you love for FREE!! or with any LLM.**
 
 ```
 setfree claude
 ```
 
-And you get your usual `claude`, but with whatever model you want.
+And you get your usual `claude`, but powered with MindsHub-Air, a free coding model + the best models (Muse Spark, GLM, Deepseek, Astra,.. etc).
 
 
 
 ## Why
 
-Claude Code, Codex, Gemini CLI, Aider: good interfaces, all of them. But each one assumes exactly one provider, one auth flow, one set of models. Want to point Claude Code at a company gateway or a local proxy instead? Enjoy hand-rolling environment variables, then redoing it every time something changes.
+Claude Code, Codex, VS-Code, Gemini CLI, Aider: good interfaces, all of them. But each one assumes exactly one provider, one auth flow, one set of models. You can set them free.
 
-The CLI you like and the model you use should be two different decisions. SetFree just makes that true.
+The CLI you like and the model you use should be two different decisions. SetFree makes them free to use and opens your CLI to the best models for coding.
 
 
 ## Install
@@ -32,9 +32,7 @@ Windows:
 irm https://raw.githubusercontent.com/mindsdb/setfree/main/install.ps1 | iex
 ```
 
-One binary. No Python, no Node, no Go required to run it. Homebrew and friends are on the way, not here yet.
-
-SetFree also keeps itself current on its own. Once a day it checks whether main has moved on without it and quietly installs the newer build. No `setfree update` to remember, no changelog to read. Set `SETFREE_NO_AUTOUPDATE=1` if you'd rather pin a version yourself.
+One binary. No dependencies.
 
 ## Usage
 
@@ -67,21 +65,15 @@ Saved as your default gateway.
 Launching Claude Code...
 ```
 
-Every run after that is silent: straight to `claude`, nothing printed, nothing asked. A wrapper you notice every time is a wrapper that's in your way.
-
-Setup only happens on a real terminal. In scripts or CI, set `SETFREE_BASE_URL` and `SETFREE_API_KEY` instead. SetFree fails fast with a clear message rather than hanging on a prompt nobody's there to answer.
 
 ## Coding CLIs
 
-Claude Code, Codex, and Hermes Agent work today. So does VS Code: `setfree code` (or `setfree vscode`) launches the editor with the gateway environment in place, so the Claude Code extension inside it routes through your gateway — the extension spawns the same `claude` binary, which reads its configuration from the environment VS Code hands it. One catch, which SetFree tells you about at launch: that environment only applies to a freshly started VS Code, so quit any running instance first.
+Claude Code, Codex, VSCode and Hermes Agent work today. 
 
-`setfree hermes` passes `--provider custom` and sets `CUSTOM_BASE_URL` plus a credential env var derived from the gateway's own hostname (e.g. `api.mindshub.ai` → `MINDSHUB_API_KEY`) — the one path in Hermes proven to route through an arbitrary gateway, since Hermes has no CLI flag that accepts a literal base URL or key at all. `setfree hermes-desktop` sets the same environment for Hermes' desktop app, whose backend inherits it the same way VS Code's Claude Code extension does — with one caveat: if the desktop app already has a provider chosen in its own Settings, that saved choice wins over the environment, so reset it there first (or just use `setfree hermes`, which always wins).
-
-Gemini CLI and Aider get detected if they're installed and show up on the landing screen, but they politely decline to launch until someone builds an adapter for them. No pretending.
 
 ## Gateway configuration
 
-
+Want to use it with your own LLM-Gateway?
 
 Manage both without opening either file:
 
@@ -115,26 +107,6 @@ Read `internal/adapters/claude/claude.go` or `internal/adapters/codex/codex.go`.
 
 Missing your favorite CLI? This is the fast path to fixing that yourself.
 
-## Security
-
-- API keys live in `credentials.toml`, apart from `config.toml`, `0600` on Unix. `setfree config show` tells you a key is configured. It never shows you the key.
-- Codex's key never touches argv, where anyone on the machine could read it with `ps`. It travels through the child process's environment instead.
-- SetFree builds an environment and steps aside. It doesn't proxy your traffic, phone home, or sit in the request path once the CLI is running.
-- No modified binaries, ever. SetFree launches the CLI you installed, exactly as it is, and never rewrites its native config.
-- Self-updates are checked against `checksums.txt` before anything gets installed. A mismatch aborts the update and leaves your current binary untouched.
-
-This is a configuration tool, not a bypass. It doesn't touch authentication or licensing, and it doesn't spoof a provider. It just points a good interface at a backend you're already allowed to use.
-
-## Roadmap
-
-- Gemini CLI and Aider adapters
-- Multiple named gateways (`setfree gateway add|list|use`); the config format already supports it
-- `--gateway` / `--model` flags for one-off overrides
-- Gateway-specific adapters where the generic path isn't enough
-- Homebrew, Scoop, WinGet
-- OS keychain storage as an alternative to `credentials.toml`
-
-Not a promise, just the order things are likely to land. Open an issue if yours should jump the line.
 
 ## Contributing
 
