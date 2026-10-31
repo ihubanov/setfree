@@ -8,9 +8,11 @@ package vision
 //
 // Lifecycle: the proxy is started by internal/app/launch.go as a child of the
 // SetFree process that's about to run the CLI, and that parent kills it when
-// the CLI exits. An idle-timeout (default 1h) is only a backstop for a proxy
-// orphaned by an abnormal parent death (SIGKILL) — it must be generous enough
-// to never cull a live session that's simply between turns.
+// the CLI exits. A parent that dies without getting that chance (SIGKILL, OOM)
+// is caught by the parent pipe (see watchParent in serve.go). An idle timeout
+// can be configured for an unattended manual run, but it's off by default: the
+// CLI keeps pointing at our port for the life of the session, so exiting
+// between turns would strand it on a dead port.
 
 import (
 	"bufio"
@@ -34,7 +36,12 @@ type proxy struct {
 
 	inFlight     atomic.Int64
 	lastActivity atomic.Int64
+
+	// idlePoll is how often idleWatcher checks; tests shorten it.
+	idlePoll time.Duration
 }
+
+const idlePollInterval = 15 * time.Second
 
 // newProxy constructs a proxy forwarding to target with the given vision cfg.
 func newProxy(target string, cfg Config) *proxy {
@@ -42,6 +49,7 @@ func newProxy(target string, cfg Config) *proxy {
 		target:    trimTrailingSlash(target),
 		cap:       newCaptioner(cfg),
 		transport: &http.Transport{MaxIdleConnsPerHost: 4},
+		idlePoll:  idlePollInterval,
 	}
 }
 
@@ -67,9 +75,7 @@ func Serve(ctx context.Context, w io.Writer, target string, cfg Config) error {
 	// Announce readiness so the parent can wire the CLI at us.
 	fmt.Fprintf(w, "ready %s\n", ln.Addr().String())
 
-	// Idle backstop: exit only when no request is in flight AND nothing has
-	// touched us for the configured timeout. A live session keeps lastActivity
-	// fresh on every request, so this only reaps an orphaned proxy.
+	// Idle backstop, off unless configured — see defaultIdleTimeout.
 	if cfg.IdleTimeout > 0 {
 		go p.idleWatcher(ctx, ln, cfg.IdleTimeout)
 	}
@@ -90,7 +96,7 @@ func (p *proxy) touch() {
 }
 
 func (p *proxy) idleWatcher(ctx context.Context, ln net.Listener, timeout time.Duration) {
-	t := time.NewTicker(15 * time.Second)
+	t := time.NewTicker(p.idlePoll)
 	defer t.Stop()
 	for {
 		select {
@@ -145,7 +151,9 @@ func (p *proxy) handle(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := p.transport.RoundTrip(req)
 	if err != nil {
-		http.Error(w, "vision proxy: gateway unreachable: "+err.Error(), http.StatusBadGateway)
+		// The CLI reports this against its base URL, which is us, so name
+		// the real gateway or the error points at localhost.
+		http.Error(w, fmt.Sprintf("vision bridge: no response from the gateway at %s (the local bridge is fine): %v", p.target, err), http.StatusBadGateway)
 		return
 	}
 	defer resp.Body.Close()

@@ -102,6 +102,8 @@ Environment variables override saved config for a single run, handy in scripts a
 | `SETFREE_VISION_BASE_URL` | separate endpoint for the vision model (optional) |
 | `SETFREE_VISION_API_KEY` | API key for the vision model (optional) |
 | `SETFREE_VISION_OFF` | `1` hard-disables the bridge for a run |
+| `SETFREE_VISION_CONCURRENCY` | images captioned in parallel (default `8`) |
+| `SETFREE_VISION_IDLE_TIMEOUT` | exit the proxy after this long with no request (default: off) |
 
 Order of precedence: env vars, then saved config, then interactive setup (terminal only).
 
@@ -127,6 +129,8 @@ SETFREE_VISION_MODEL=qwen3.5 setfree claude
 ```
 
 This is the one, deliberate exception to SetFree's "step aside, never sit in the request path" rule. It's strictly opt-in — with no vision model set, no proxy is started and nothing about the launch differs from before. The proxy runs on localhost, lives only as long as the CLI does, and never touches authentication or licensing. The CLI binary itself is still the one you installed, unmodified.
+
+The proxy's lifetime is the launch's: SetFree runs the CLI as a child while the bridge is on, so it stops the proxy when the CLI exits, and it holds a pipe to the proxy that the OS closes if SetFree is killed outright, so the proxy doesn't get left behind. There is deliberately no idle timeout by default — the CLI holds the proxy's address for the whole session, so a proxy that exited between turns would leave every following request refused until the CLI restarted. `SETFREE_VISION_IDLE_TIMEOUT` adds one back for an unattended manual run (`setfree vision-proxy`); `0` keeps it off.
 
 Two things the bridge can't do, because they'd require modifying the binary rather than proxying it: keep the original image for an on-demand "look closer" re-query, and let the text model ask the vision model about a specific detail it didn't caption well. The text model gets the caption and works from there. That's the tradeoff for staying out of the binary.
 

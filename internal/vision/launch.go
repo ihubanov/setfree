@@ -66,9 +66,18 @@ func MaybeStart(ctx context.Context, resolved gateway.Resolved, cfg Config) (Res
 	cmd := exec.CommandContext(ctx, exe, ProxySubcommand,
 		"--target", resolved.Gateway.BaseURL,
 		"--idle-timeout", strconv.FormatInt(int64(cfg.IdleTimeout.Seconds()), 10),
+		"--parent-pipe",
 	)
 	cmd.Env = os.Environ()
 	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return Result{}, fmt.Errorf("vision bridge: starting proxy: %w", err)
+	}
+	// Held open for the proxy's whole life and never written to: it's how the
+	// proxy learns this process died (see watchParent). Go opens it
+	// close-on-exec, so the CLI we launch next doesn't inherit it and keep it
+	// open after we're gone.
+	parentPipe, err := cmd.StdinPipe()
 	if err != nil {
 		return Result{}, fmt.Errorf("vision bridge: starting proxy: %w", err)
 	}
@@ -98,6 +107,7 @@ func MaybeStart(ctx context.Context, resolved gateway.Resolved, cfg Config) (Res
 	}
 
 	stop := func() {
+		_ = parentPipe.Close()
 		_ = cmd.Process.Signal(sigTerm)
 		// Don't reap forever; if it ignores the signal, force it.
 		done := make(chan struct{})

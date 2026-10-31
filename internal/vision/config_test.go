@@ -109,6 +109,12 @@ func TestResolve_Defaults(t *testing.T) {
 	if cfg.IdleTimeout != defaultIdleTimeout {
 		t.Errorf("default IdleTimeout = %v, want %v", cfg.IdleTimeout, defaultIdleTimeout)
 	}
+	// Pinned deliberately, not just compared to the constant: a nonzero
+	// default culls live sessions between turns, and the CLI is pointed at
+	// this proxy for the whole session.
+	if cfg.IdleTimeout != 0 {
+		t.Errorf("idle backstop must be off by default, got %v", cfg.IdleTimeout)
+	}
 }
 
 // silence unused linter for the store interface methods not exercised here

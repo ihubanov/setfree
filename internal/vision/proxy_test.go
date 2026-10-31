@@ -2,11 +2,15 @@ package vision
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 // recordingGateway is the fake "real gateway" the proxy forwards to. It
@@ -123,5 +127,46 @@ func TestProxy_InvalidJSONPassthrough(t *testing.T) {
 	}
 	if !bytes.Equal(got.body, body) {
 		t.Error("unparseable body should pass through unchanged, not error")
+	}
+}
+
+// The idle backstop is opt-in: with it configured it must still fire.
+func TestProxy_IdleWatcherStillFiresWhenConfigured(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer ln.Close()
+
+	p := newTestProxy(t, "http://gw", "http://vision")
+	p.idlePoll = time.Millisecond
+	p.touch()
+
+	done := make(chan struct{})
+	go func() {
+		p.idleWatcher(context.Background(), ln, time.Millisecond)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("idleWatcher did not fire with a configured timeout")
+	}
+}
+
+// The CLI shows this text against its own base URL, which is the proxy, so it
+// has to name the real gateway or the failure looks like a localhost problem.
+func TestProxy_GatewayFailureNamesTheGateway(t *testing.T) {
+	gw := httptest.NewServer(http.NotFoundHandler())
+	target := gw.URL
+	gw.Close() // nothing listening: the forward fails
+
+	p := newTestProxy(t, target, "http://unreachable-vision")
+	rec := do(t, p, http.MethodPost, "/v1/messages", []byte(`{}`), "Bearer realkey")
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), target) {
+		t.Errorf("error should name the gateway %s, got %q", target, rec.Body.String())
 	}
 }

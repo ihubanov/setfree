@@ -43,12 +43,15 @@ const (
 // Defaults.
 const (
 	defaultConcurrency = 8
-	// defaultIdleTimeout is a backstop, not the primary lifecycle. The proxy
-	// is normally killed by its parent (internal/app/launch.go) when the CLI
-	// exits; this only reaps a proxy orphaned by an abnormal parent death
-	// (SIGKILL), so it's deliberately generous to never cull a live session
-	// that's simply between turns.
-	defaultIdleTimeout = time.Hour
+	// defaultIdleTimeout is off. The proxy's lifecycle belongs to the
+	// launcher, which stops it when the CLI exits, and a proxy left behind by
+	// an abnormal parent death is caught by the parent pipe (serve.go) — so
+	// culling on idle time can only ever hurt: the CLI keeps pointing at
+	// our port for the life of the session, so a proxy that exits between
+	// turns strands it on a dead port (ECONNREFUSED) until the CLI is
+	// restarted. Set SETFREE_VISION_IDLE_TIMEOUT for an unattended manual run
+	// that needs its own backstop.
+	defaultIdleTimeout = time.Duration(0)
 )
 
 // Config is a fully-resolved vision-bridge configuration: concrete values,
